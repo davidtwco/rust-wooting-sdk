@@ -1,0 +1,2 @@
+[workspace]
+members = [ "wooting-analog-sdk-sys" ]

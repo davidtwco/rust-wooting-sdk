@@ -1,0 +1,4 @@
+[submodule "wooting-analog-sdk-sys/vendor"]
+	path = wooting-analog-sdk-sys/vendor
+	url = https://github.com/davidtwco/wooting-analog-sdk.git
+	branch = wooting.rs-patches
