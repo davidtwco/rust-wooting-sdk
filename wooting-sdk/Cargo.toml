@@ -1,0 +1,15 @@
+[package]
+name = "wooting-sdk"
+version = "0.1.0"
+authors = ["David Wood <david@davidtw.co>"]
+edition = "2018"
+
+[dependencies]
+lazy_static = "1.2.0"
+wooting-analog-sdk-sys = { version = "0.1.0", path = "../wooting-analog-sdk-sys", optional = true }
+wooting-rgb-sdk-sys = { version = "0.1.0", path = "../wooting-rgb-sdk-sys", optional = true }
+
+[features]
+default = [ "analog", "rgb" ]
+analog = [ "wooting-analog-sdk-sys" ]
+rgb = [ "wooting-rgb-sdk-sys" ]

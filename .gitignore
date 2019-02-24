@@ -1,5 +1,6 @@
 /target
 /wooting-analog-sdk-sys/target
 /wooting-rgb-sdk-sys/target
+/wooting-sdk/target
 **/*.rs.bk
 Cargo.lock

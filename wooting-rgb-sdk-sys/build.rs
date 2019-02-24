@@ -1,10 +1,10 @@
-extern crate bindgen;
-extern crate cc;
-extern crate pkg_config;
-
 use std::env;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+
+use bindgen;
+use cc;
+use pkg_config;
 
 fn main() {
     // If enabled, attempt to find `wooting-rgb-sdk` via pkg-config. Otherwise, we'll
@@ -32,30 +32,31 @@ fn main() {
         .header("vendor/src/wooting-usb.h")
         .generate()
         .expect("Unable to generate bindings for the Wooting RGB SDK");
-    bindings.write_to_file(out_dir.join("bindings.rs"))
+    bindings
+        .write_to_file(out_dir.join("bindings.rs"))
         .expect("Unable to write Wooting RGB SDK bindings");
 
     // Build hidapi to link against.
     let mut cfg = cc::Build::new();
-    cfg.include("vendor/hidapi/hidapi");
+    cfg.warnings(false)
+        .extra_warnings(false)
+        .include("vendor/hidapi/hidapi");
 
     let use_hidraw_for_hidapi = env::var("WOOTING_RGB_SDK_HIDAPI_HIDRAW").is_ok();
     let compiled_hidapi = if target.contains("linux") {
         let use_pkg_config_for_hidapi = env::var("WOOTING_RGB_SDK_HIDAPI_SHARED").is_ok();
         match (use_pkg_config_for_hidapi, use_hidraw_for_hidapi) {
             (true, false) => {
-                pkg_config::probe_library("hidapi-libusb")
-                    .expect("Unable to find hidapi-libusb");
+                pkg_config::probe_library("hidapi-libusb").expect("Unable to find hidapi-libusb");
                 false
-            },
+            }
             (true, true) => {
-                pkg_config::probe_library("hidapi-hidraw")
-                    .expect("Unable to find hidapi-hidraw");
+                pkg_config::probe_library("hidapi-hidraw").expect("Unable to find hidapi-hidraw");
                 false
-            },
+            }
             (false, false) => {
-                let hidapi = pkg_config::find_library("libusb-1.0")
-                    .expect("Unable to find libusb-1.0");
+                let hidapi =
+                    pkg_config::find_library("libusb-1.0").expect("Unable to find libusb-1.0");
                 for path in hidapi.include_paths {
                     cfg.include(path.to_str().unwrap());
                 }
@@ -63,15 +64,13 @@ fn main() {
                 cfg.file("vendor/hidapi/libusb/hid.c")
                     .compile("libhidapi.a");
                 true
-            },
+            }
             (false, true) => {
-                pkg_config::probe_library("libudev")
-                    .expect("Unable to find libudev");
+                pkg_config::probe_library("libudev").expect("Unable to find libudev");
 
-                cfg.file("vendor/hidapi/linux/hid.c")
-                    .compile("libhidapi.a");
+                cfg.file("vendor/hidapi/linux/hid.c").compile("libhidapi.a");
                 true
-            },
+            }
         }
     } else if target.contains("windows") {
         cfg.file("vendor/hidapi/windows/hid.c")
@@ -79,8 +78,7 @@ fn main() {
         println!("cargo:rustc-link-lib=setupapi");
         true
     } else if target.contains("apple") {
-        cfg.file("vendor/hidapi/mac/hid.c")
-            .compile("libhidapi.a");
+        cfg.file("vendor/hidapi/mac/hid.c").compile("libhidapi.a");
         println!("cargo:rustc-link-lib=IOKit");
         println!("cargo:rustc-link-lib=CoreFoundation");
         true
@@ -90,27 +88,29 @@ fn main() {
 
     // Build SDK to link against.
     let mut cfg = cc::Build::new();
-    cfg.file("vendor/src/wooting-rgb-sdk.c")
+    cfg.warnings(false)
+        .extra_warnings(false)
+        .file("vendor/src/wooting-rgb-sdk.c")
         .file("vendor/src/wooting-usb.c");
     match (compiled_hidapi, use_hidraw_for_hidapi) {
         (true, _) => {
             cfg.include("vendor/hidapi/hidapi")
                 .object(out_dir.join("libhidapi.a"));
-        },
+        }
         (false, false) => {
-            let lib = pkg_config::find_library("hidapi-libusb")
-                .expect("Unable to find hidapi-libusb");
+            let lib =
+                pkg_config::find_library("hidapi-libusb").expect("Unable to find hidapi-libusb");
             for path in lib.include_paths {
                 cfg.include(path.to_str().unwrap());
             }
-        },
+        }
         (false, true) => {
-            let lib = pkg_config::find_library("hidapi-hidraw")
-                .expect("Unable to find hidapi-hidraw");
+            let lib =
+                pkg_config::find_library("hidapi-hidraw").expect("Unable to find hidapi-hidraw");
             for path in lib.include_paths {
                 cfg.include(path.to_str().unwrap());
             }
-        },
+        }
     }
     cfg.compile("wooting-rgb-sdk");
 }
