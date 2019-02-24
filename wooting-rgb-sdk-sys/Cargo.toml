@@ -1,0 +1,12 @@
+[package]
+name = "wooting-rgb-sdk-sys"
+version = "0.1.0"
+authors = ["David Wood <david@davidtw.co>"]
+edition = "2018"
+
+[dependencies]
+
+[build-dependencies]
+bindgen = "0.47.2"
+cc = { version = "1.0.29", features = [ "parallel" ] }
+pkg-config = "0.3.14"

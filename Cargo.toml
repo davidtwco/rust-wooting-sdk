@@ -1,2 +1,2 @@
 [workspace]
-members = [ "wooting-analog-sdk-sys" ]
+members = [ "wooting-analog-sdk-sys", "wooting-rgb-sdk-sys" ]
