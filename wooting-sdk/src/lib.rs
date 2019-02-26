@@ -64,6 +64,9 @@
 //! [bindgen]: https://github.com/rust-lang/rust-bindgen
 //!
 //! ## Example
+//! See the [`wooting-sdk/src/examples/`][examples] directory for more examples.
+//!
+//! [examples]: https://github.com/davidtwco/rust-wooting-sdk/tree/master/wooting-sdk/examples
 //!
 //! ```rust,no_run
 //! # fn test() -> Result<(), wooting_sdk::WootingError> {
