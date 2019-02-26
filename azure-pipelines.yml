@@ -1,0 +1,49 @@
+trigger:
+  - master
+
+jobs:
+- template: .ci/build_and_test.yml
+  parameters:
+    virtual_machine_image: ubuntu-16.04
+    toolchain: stable
+    name: "linux_stable"
+- template: .ci/build_and_test.yml
+  parameters:
+    virtual_machine_image: ubuntu-16.04
+    toolchain: beta
+    name: "linux_beta"
+- template: .ci/build_and_test.yml
+  parameters:
+    virtual_machine_image: ubuntu-16.04
+    toolchain: nightly
+    name: "linux_nightly"
+- template: .ci/build_and_test.yml
+  parameters:
+    virtual_machine_image: macOS-10.13
+    toolchain: stable
+    name: "darwin_stable"
+- template: .ci/build_and_test.yml
+  parameters:
+    virtual_machine_image: macOS-10.13
+    toolchain: beta
+    name: "darwin_beta"
+- template: .ci/build_and_test.yml
+  parameters:
+    virtual_machine_image: macOS-10.13
+    toolchain: nightly
+    name: "darwin_nightly"
+- template: .ci/build_and_test.yml
+  parameters:
+    virtual_machine_image: vs2017-win2016
+    toolchain: stable
+    name: "windows_stable"
+- template: .ci/build_and_test.yml
+  parameters:
+    virtual_machine_image: vs2017-win2016
+    toolchain: beta
+    name: "windows_beta"
+- template: .ci/build_and_test.yml
+  parameters:
+    virtual_machine_image: vs2017-win2016
+    toolchain: nightly
+    name: "windows_nightly"
