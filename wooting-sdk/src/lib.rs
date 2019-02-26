@@ -13,8 +13,93 @@
     unused_results
 )]
 
-//! # Wooting SDK
-//! Rust bindings to the Wooting Analog and RGB SDK.
+//! # rust-wooting-sdk
+//! This crate provides Rust bindings to the Analog and RGB SDKs provided by Wooting for the Wooting
+//! One and Wooting Two.
+//!
+//! ## Known issues
+//! This repository currently uses a fork of the Wooting SDKs that allow them to be built on Linux and
+//! that add partial support for the Wooting Two (`direct_set_key` will not work for the numpad keys).
+//!
+//! As soon as an updated version of the SDK is made available, this crate switch to use it.
+//!
+//! ## Prerequisites
+//! In order to generate bindings for the SDKs using [bindgen][bindgen], `wooting-analog-sdk-sys` and
+//! `wooting-rgb-sdk-sys` require `libclang`. If the submodules for the SDKs are not cloned, then the
+//! build scripts will attempt to clone them, in this case, `git` is required. When building the SDKs,
+//! `libusb` or `libudev` will be required for the SDKs' `hidapi` dependency on Linux, these are
+//! expected to exist.
+//!
+//! ### Windows
+//! Download and install the official pre-built binary for `libclang` from the
+//! [LLVM download page][llvm].
+//!
+//! ### Mac
+//! If using Homebrew, run:
+//!
+//! ```text
+//! brew install llvm
+//! ```
+//!
+//! If using MacPorts, run:
+//!
+//! ```text
+//! port install clang-3.9
+//! ```
+//!
+//! ### Linux
+//! If running Ubuntu 16.10 or greater, run:
+//!
+//! ```text
+//! apt install llvm-3.9-dev libclang-3.9-dev clang-3.9 libusb-1.0.0-dev
+//! ```
+//!
+//! If running a version earlier than Ubuntu 16.10, then you may need to use the
+//! [LLVM apt repositories][llvm_apt].
+//!
+//! If using any other distribution, then you'll just need to figure it out yourself.
+//!
+//! [llvm]: http://releases.llvm.org/download.html
+//! [llvm_apt]: http://apt.llvm.org/
+//! [bindgen]: https://github.com/rust-lang/rust-bindgen
+//!
+//! ## Example
+//!
+//! ```rust,no_run
+//! # fn test() -> Result<(), wooting_sdk::WootingError> {
+//! use wooting_sdk::{
+//!     analog::read_analog_key,
+//!     rgb::RgbKeyboard,
+//!     Key
+//! };
+//!
+//! let min = u8::min_value();
+//! let max = u8::max_value();
+//!
+//! // Check how far down W has been pressed..
+//! match read_analog_key(Key::W)? {
+//!     min => { /* ..not pressed. */ },
+//!     max => { /* ..completely pressed. */ },
+//!     _ => { /* ..partially pressed. */ },
+//! }
+//!
+//! let mut keyboard = RgbKeyboard::default();
+//!
+//! // Modify the keyboard array so QWERTY will be set to white..
+//! keyboard.array_set_full(&[
+//!     (Key::Q, (255, 255, 255)),
+//!     (Key::W, (255, 255, 255)),
+//!     (Key::E, (255, 255, 255)),
+//!     (Key::R, (255, 255, 255)),
+//!     (Key::T, (255, 255, 255)),
+//!     (Key::Y, (255, 255, 255)),
+//! ]);
+//!
+//! // ..and apply the change.
+//! keyboard.array_update();
+//! # Ok(())
+//! # }
+//! ```
 
 use std::error::Error;
 use std::fmt::{self, Display};
@@ -24,18 +109,18 @@ use std::fmt::{self, Display};
 pub enum WootingError {
     /// Indicates that the keyboard is disconnected.
     Disconnected,
-    /// Indicates that the state of too many keys were requested in a call to `read_analog_keys`.
-    TooManyKeys,
+    /// Indicates that the requested number of analog key values was invalid. Must be non-zero
+    /// and less than sixteen.
+    InvalidBufferSize,
 }
 
 impl Display for WootingError {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             WootingError::Disconnected => write!(fmt, "Wooting keyboard is not connected"),
-            WootingError::TooManyKeys => write!(
-                fmt,
-                "Too many key states requested, must be a maximum of 16 keys"
-            ),
+            WootingError::InvalidBufferSize => {
+                write!(fmt, "Requested analog value of too many keys")
+            }
         }
     }
 }
@@ -49,9 +134,9 @@ pub trait IntoMatrixRowColumn {
 }
 
 /// Types that implement this trait can be associated with a scan index.
-pub trait FromScanIndex {
+pub trait FromScanIndex: Sized {
     /// Return the instance of this type for the given scan index.
-    fn from_scan_index(index: u8) -> Self;
+    fn from_scan_index(index: u8) -> Option<Self>;
 }
 
 /// Represents a key on the keyboard.
@@ -188,7 +273,7 @@ pub enum Key {
     /// Right square bracket key (`]`).
     RightBracket,
     /// Backslash key (`\`).
-    BackSlash,
+    Backslash,
     /// Delete key (`Del`). Deletes the character in the position after the cursor.
     Delete,
     /// End key. Has the opposite effect of the home key.
@@ -372,7 +457,7 @@ impl Display for Key {
                 P => "P",
                 LeftBracket => "[",
                 RightBracket => "]",
-                BackSlash => "\\",
+                Backslash => "\\",
                 Delete => "Delete",
                 End => "End",
                 PageDown => "Page Down",
@@ -434,9 +519,10 @@ impl Display for Key {
 }
 
 impl FromScanIndex for Key {
-    fn from_scan_index(index: u8) -> Self {
+    /// Return the key that corresponds to the provided scan index, if any.
+    fn from_scan_index(index: u8) -> Option<Self> {
         use Key::*;
-        match index {
+        Some(match index {
             0 => Escape,
             1 => F1,
             2 => F2,
@@ -482,8 +568,8 @@ impl FromScanIndex for Key {
             42 => P,
             43 => LeftBracket,
             44 => RightBracket,
-            // 45 is also associated with `Key::ISO1`
-            45 => BackSlash,
+            // 45 is also associated with `Key::Backslash`
+            45 => ISO1,
             46 => Delete,
             47 => End,
             48 => CapsLock,
@@ -548,8 +634,8 @@ impl FromScanIndex for Key {
             109 => A3,
             110 => Mode,
             // Invalid index should only ever be one of: 88 | 89 | 111 ..= 255
-            _ => panic!("Invalid scan index"),
-        }
+            _ => return None,
+        })
     }
 }
 
@@ -612,7 +698,7 @@ impl IntoMatrixRowColumn for Key {
             P => (2, 10),
             LeftBracket => (2, 11),
             RightBracket => (2, 12),
-            BackSlash => (2, 13),
+            Backslash => (2, 13),
             Delete => (2, 14),
             End => (2, 15),
             PageDown => (2, 16),
@@ -687,6 +773,11 @@ pub mod analog {
     }
 
     /// Is there a Wooting keyboard connected?
+    ///
+    /// ```rust,no_run
+    /// // Assert that a Wooting keyboard is connected..
+    /// assert!(wooting_sdk::analog::is_wooting_keyboard_connected());
+    /// ```
     pub fn is_wooting_keyboard_connected() -> bool {
         unsafe { wooting_analog_sdk_sys::wooting_kbd_connected() }
     }
@@ -704,6 +795,10 @@ pub mod analog {
 
     /// Set a callback to be invoked when a keyboard is disconnected. Currently only happens on a
     /// failed read.
+    ///
+    /// See [`analog_disconnected_callback`][example] example for usage.
+    ///
+    /// [example]: https://github.com/davidtwco/rust-wooting-sdk/blob/master/wooting-sdk/examples/analog_set_disconnected.rs
     pub fn set_disconnected_callback<F: 'static + Fn() + Send>(callback: F) {
         *CALLBACK.lock().unwrap() = Some(Box::new(callback));
         unsafe {
@@ -714,28 +809,63 @@ pub mod analog {
     }
 
     /// Read the analog value, represented by a `u8`, of the requested key.
+    ///
+    /// ```rust,no_run
+    /// # fn test() -> Result<(), wooting_sdk::WootingError> {
+    /// use wooting_sdk::{analog::read_analog_key, Key};
+    ///
+    /// let min = u8::min_value();
+    /// let max = u8::max_value();
+    ///
+    /// // Check how far down W has been pressed..
+    /// match read_analog_key(Key::W)? {
+    ///     min => { /* ..not pressed. */ },
+    ///     max => { /* ..completely pressed. */ },
+    ///     _ => { /* ..partially pressed. */ },
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn read_analog_key<K: IntoMatrixRowColumn>(key: K) -> Result<u8, WootingError> {
         let (row, column) = key.into_matrix_row_and_column();
         let ret = unsafe { wooting_analog_sdk_sys::wooting_read_analog(row, column) };
-
-        match ret {
-            0 if !is_wooting_keyboard_connected() => Err(WootingError::Disconnected),
-            0 => panic!("Invalid row and column"),
-            ret => Ok(ret),
+        if ret == 0 && !is_wooting_keyboard_connected() {
+            Err(WootingError::Disconnected)
+        } else {
+            Ok(ret)
         }
     }
 
-    /// Read the analog value, represented by a `u8`, of all pressed keys, up to a maximum of sixteen
-    /// keys.
-    pub fn read_analog_keys<K: FromScanIndex>(
-        max_num_keys: u8,
-    ) -> Result<Vec<(K, u8)>, WootingError> {
-        if max_num_keys > 16 {
-            return Err(WootingError::TooManyKeys);
+    /// Read the analog value, represented by a `u8`, of pressed keys, up to a maximum of
+    /// `n` keys (maximum of sixteen).
+    ///
+    /// This function will return `Err(WootingError::InvalidBufferSize)` if `n` is zero or larger
+    /// than sixteen.
+    ///
+    /// ```rust,no_run
+    /// # fn test() -> Result<(), wooting_sdk::WootingError> {
+    /// use wooting_sdk::{analog::read_analog_keys, Key};
+    ///
+    /// // Read the value of two pressed keys and check if they are CTRL and A..
+    /// if let &[(Key::LeftControl, ctrl), (Key::A, a)] = read_analog_keys(2)?.as_slice() {
+    ///     // ..if so, check if they are at least half pressed..
+    ///     let is_half_pressed = |v: u8| v >= u8::max_value() / 2;
+    ///     if is_half_pressed(ctrl) && is_half_pressed(a) {
+    ///         // ..and if they are, select all.
+    ///         select_all();
+    ///     }
+    /// }
+    /// # Ok(())
+    /// # }
+    /// # fn select_all() {}
+    /// ```
+    pub fn read_analog_keys<K: FromScanIndex>(n: u8) -> Result<Vec<(K, u8)>, WootingError> {
+        if n == 0 || n > 16 {
+            return Err(WootingError::InvalidBufferSize);
         }
 
-        let buffer_length: usize = 2 * max_num_keys as usize;
-        let mut buffer: Vec<u8> = Vec::with_capacity(buffer_length);
+        let buffer_length = n as usize * 2;
+        let mut buffer: Vec<u8> = vec![0; buffer_length];
         let ret: i32 = unsafe {
             wooting_analog_sdk_sys::wooting_read_full_buffer(
                 buffer.as_mut_ptr(),
@@ -750,14 +880,12 @@ pub mod analog {
         } else {
             Ok(buffer
                 .chunks(2)
-                .map(|chunk| {
-                    match chunk {
-                        &[scan_index, analog_value] => {
-                            (K::from_scan_index(scan_index), analog_value)
-                        }
-                        // As we always double `max_num_keys`, we can always chunk by two.
-                        _ => unreachable!(),
+                .take(ret as usize)
+                .filter_map(|chunk| match chunk {
+                    &[scan_index, analog_value] => {
+                        K::from_scan_index(scan_index).map(|key| (key, analog_value))
                     }
+                    _ => unreachable!(),
                 })
                 .collect())
         }
@@ -786,6 +914,11 @@ pub mod rgb {
     }
 
     /// Is there a Wooting keyboard connected?
+    ///
+    /// ```rust,no_run
+    /// // Assert that a Wooting keyboard is connected..
+    /// assert!(wooting_sdk::rgb::is_wooting_keyboard_connected());
+    /// ```
     pub fn is_wooting_keyboard_connected() -> bool {
         unsafe { wooting_rgb_sdk_sys::wooting_rgb_kbd_connected() }
     }
@@ -803,6 +936,10 @@ pub mod rgb {
 
     /// Set a callback to be invoked when a keyboard is disconnected. Currently only happens on a
     /// failed read.
+    ///
+    /// See [`rgb_disconnected_callback`][example] example for usage.
+    ///
+    /// [example]: https://github.com/davidtwco/rust-wooting-sdk/blob/master/wooting-sdk/examples/rgb_set_disconnected.rs
     pub fn set_disconnected_callback<F: 'static + Fn() + Send>(callback: F) {
         *CALLBACK.lock().unwrap() = Some(Box::new(callback));
         unsafe {
@@ -821,6 +958,14 @@ pub mod rgb {
         /// Set the color of a single key. This will not influence the keyboard color array. Use
         /// this function for simple amplifications, like a notification. Use the array functions
         /// if you want to change the entire keyboard. Returns `true` if the color is set.
+        ///
+        /// ```rust,no_run
+        /// use wooting_sdk::{rgb::RgbKeyboard, Key};
+        ///
+        /// let mut keyboard = RgbKeyboard::default();
+        /// // Set the A key to white...
+        /// keyboard.direct_set_key(Key::A, 255, 255, 255);
+        /// ```
         pub fn direct_set_key<K: IntoMatrixRowColumn>(
             &mut self,
             key: K,
@@ -838,19 +983,57 @@ pub mod rgb {
         /// keyboard color array. Use this function for simple amplifications, like a notification.
         /// Use the array functions if you want to change the entire keyboard. Returns `true` if
         /// the color is reset.
-        pub fn direct_reset<K: IntoMatrixRowColumn>(&mut self, key: K) -> bool {
+        ///
+        /// ```rust,no_run
+        /// use wooting_sdk::{rgb::RgbKeyboard, Key};
+        ///
+        /// let mut keyboard = RgbKeyboard::default();
+        /// // Set the A key to white...
+        /// keyboard.direct_set_key(Key::A, 255, 255, 255);
+        /// // ..and then reset it back!
+        /// keyboard.direct_reset_key(Key::A);
+        /// ```
+        pub fn direct_reset_key<K: IntoMatrixRowColumn>(&mut self, key: K) -> bool {
             let (row, column) = key.into_matrix_row_and_column();
             unsafe { wooting_rgb_sdk_sys::wooting_rgb_direct_reset_key(row, column) }
         }
 
         /// Apply any updates made by the `array_set_single` and `array_set_full` functions.
         /// Returns `true` if the colors are updated.
+        ///
+        /// ```rust,no_run
+        /// use wooting_sdk::{rgb::RgbKeyboard, Key};
+        ///
+        /// let mut keyboard = RgbKeyboard::default();
+        /// // Modify keyboard array so A will be set to white..
+        /// keyboard.array_set_single(Key::A, 255, 255, 255);
+        /// // ..and apply the change.
+        /// keyboard.array_update();
+        /// ```
         pub fn array_update(&mut self) -> bool {
             unsafe { wooting_rgb_sdk_sys::wooting_rgb_array_update_keyboard() }
         }
 
         /// Set an auto-update trigger after every change with the `array_set_single` and
         /// `array_set_full` functions. By default, no auto-update trigger is set.
+        ///
+        /// ```rust,no_run
+        /// use wooting_sdk::{rgb::RgbKeyboard, Key};
+        ///
+        /// let mut keyboard = RgbKeyboard::default();
+        /// // Make keyboard array changes apply automatically..
+        /// keyboard.array_auto_update(true);
+        /// // ..and then modify the array so QWERTY are set to white...
+        /// // ..with no need for a call to `array_update`!
+        /// keyboard.array_set_full(&[
+        ///     (Key::Q, (255, 255, 255)),
+        ///     (Key::W, (255, 255, 255)),
+        ///     (Key::E, (255, 255, 255)),
+        ///     (Key::R, (255, 255, 255)),
+        ///     (Key::T, (255, 255, 255)),
+        ///     (Key::Y, (255, 255, 255)),
+        /// ]);
+        /// ```
         pub fn array_auto_update(&mut self, auto_update: bool) {
             unsafe { wooting_rgb_sdk_sys::wooting_rgb_array_auto_update(auto_update) }
         }
@@ -859,6 +1042,21 @@ pub mod rgb {
         /// unless the auto update flag is set (see `array_auto_update`), so it can be called
         /// frequently (i.e. in a loop that updates the entire keyboard). Returns `true` if the
         /// colors have changed.
+        ///
+        /// ```rust,no_run
+        /// use wooting_sdk::{rgb::RgbKeyboard, Key};
+        ///
+        /// let mut keyboard = RgbKeyboard::default();
+        /// // Modify the keyboard array so QWERTY will be set to white..
+        /// keyboard.array_set_single(Key::Q, 255, 255, 255);
+        /// keyboard.array_set_single(Key::W, 255, 255, 255);
+        /// keyboard.array_set_single(Key::E, 255, 255, 255);
+        /// keyboard.array_set_single(Key::R, 255, 255, 255);
+        /// keyboard.array_set_single(Key::T, 255, 255, 255);
+        /// keyboard.array_set_single(Key::Y, 255, 255, 255);
+        /// // ..and apply the change.
+        /// keyboard.array_update();
+        /// ```
         pub fn array_set_single<K: IntoMatrixRowColumn>(
             &mut self,
             key: K,
@@ -875,6 +1073,23 @@ pub mod rgb {
         /// Set a complete color array. This will not directly update the keyboard unless the auto
         /// update flag is set (see `array_auto_update`). Returns `true` if the colors have
         /// changed.
+        ///
+        /// ```rust,no_run
+        /// use wooting_sdk::{rgb::RgbKeyboard, Key};
+        ///
+        /// let mut keyboard = RgbKeyboard::default();
+        /// // Modify the keyboard array so QWERTY will be set to white..
+        /// keyboard.array_set_full(&[
+        ///     (Key::Q, (255, 255, 255)),
+        ///     (Key::W, (255, 255, 255)),
+        ///     (Key::E, (255, 255, 255)),
+        ///     (Key::R, (255, 255, 255)),
+        ///     (Key::T, (255, 255, 255)),
+        ///     (Key::Y, (255, 255, 255)),
+        /// ]);
+        /// // ..and apply the change.
+        /// keyboard.array_update();
+        /// ```
         pub fn array_set_full<K: IntoMatrixRowColumn>(
             &mut self,
             array: &[(K, (u8, u8, u8))],
@@ -893,6 +1108,18 @@ pub mod rgb {
 
         /// Restore all colors to those that were originally on the keyboard. Must be called when
         /// application is closed (this will be invoked when this struct is dropped).
+        ///
+        /// ```rust,no_run
+        /// use wooting_sdk::{rgb::RgbKeyboard, Key};
+        ///
+        /// let mut keyboard = RgbKeyboard::default();
+        /// // Set ABC to white..
+        /// keyboard.direct_set_key(Key::A, 255, 255, 255);
+        /// keyboard.direct_set_key(Key::B, 255, 255, 255);
+        /// keyboard.direct_set_key(Key::C, 255, 255, 255);
+        /// // ..and then reset the entire keyboard back to how it was previously.
+        /// keyboard.reset_all();
+        /// ```
         pub fn reset_all(&mut self) -> bool {
             unsafe { wooting_rgb_sdk_sys::wooting_rgb_reset() }
         }

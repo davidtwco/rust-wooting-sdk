@@ -64,7 +64,7 @@ fn main() {
         (Key::P, (255, 255, 255)),
         (Key::LeftBracket, (255, 255, 255)),
         (Key::RightBracket, (255, 255, 255)),
-        (Key::BackSlash, (255, 255, 255)),
+        (Key::Backslash, (255, 255, 255)),
         (Key::Delete, (255, 255, 255)),
         (Key::End, (255, 255, 255)),
         (Key::PageDown, (255, 255, 255)),

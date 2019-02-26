@@ -13,7 +13,7 @@ fn main() {
     println!("Reading...");
     let keys = analog::read_analog_keys::<Key>(16).unwrap();
     for (key, value) in keys {
-        println!("Key {} has analog value: {}", key, value);
+        println!("{}: {}", key, value);
     }
     println!("Finished!");
 }

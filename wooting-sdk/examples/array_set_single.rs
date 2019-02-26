@@ -58,7 +58,7 @@ pub const ALL_KEYS: &'static [Key] = &[
     Key::P,
     Key::LeftBracket,
     Key::RightBracket,
-    Key::BackSlash,
+    Key::Backslash,
     Key::Delete,
     Key::End,
     Key::PageDown,
