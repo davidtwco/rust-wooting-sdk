@@ -1,10 +1,13 @@
 parameters:
   toolchain: 'stable'
   virtual_machine_image: 'ubuntu-16.04'
-  name: 'Linux on Stable'
+  name: 'linux_stable'
+  display_name: 'Linux (Stable)'
 
 jobs:
 - job: ${{ parameters.name }}
+  displayName: ${{ parameters.display_name }}
+  continueOnError: false
   pool:
     vmImage: ${{ parameters.virtual_machine_image }}
   steps:
