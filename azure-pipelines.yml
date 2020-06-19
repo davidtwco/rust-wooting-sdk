@@ -6,6 +6,9 @@ trigger:
     include:
       - '*'
 
+pr:
+  - master
+
 jobs:
 - template: .ci/build_and_test.yml
   parameters:
