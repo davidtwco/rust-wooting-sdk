@@ -2,18 +2,14 @@ use std::env;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use bindgen;
-use cc;
 use pkg_config::find_library;
 
 fn main() {
     // If enabled, attempt to find `wooting-rgb-sdk` via pkg-config. Otherwise, we'll
     // need to build the SDK.
     let use_pkg_config = env::var("WOOTING_RGB_SDK_SHARED").is_ok();
-    if use_pkg_config {
-        if find_library("wooting-rgb-sdk").is_ok() {
-            return;
-        }
+    if use_pkg_config && find_library("wooting-rgb-sdk").is_ok() {
+        return;
     }
 
     // Clone submodules if that hasn't already happened.

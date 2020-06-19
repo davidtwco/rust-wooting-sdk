@@ -726,7 +726,7 @@ pub mod analog {
     use wooting_analog_sdk_sys;
 
     lazy_static! {
-        static ref CALLBACK: Mutex<Option<Box<Fn() + Send>>> = Default::default();
+        static ref CALLBACK: Mutex<Option<Box<dyn Fn() + Send>>> = Default::default();
     }
 
     /// Is there a Wooting keyboard connected?
@@ -867,7 +867,7 @@ pub mod rgb {
     const COMPONENTS: usize = 3;
 
     lazy_static! {
-        static ref CALLBACK: Mutex<Option<Box<Fn() + Send>>> = Default::default();
+        static ref CALLBACK: Mutex<Option<Box<dyn Fn() + Send>>> = Default::default();
     }
 
     /// Is there a Wooting keyboard connected?

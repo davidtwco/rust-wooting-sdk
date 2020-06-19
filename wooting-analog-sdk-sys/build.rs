@@ -2,8 +2,6 @@ use std::env;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use bindgen;
-use cc;
 use pkg_config::find_library;
 
 fn main() {
