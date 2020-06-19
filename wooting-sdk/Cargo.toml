@@ -1,6 +1,6 @@
 [package]
 name = "wooting-sdk"
-version = "0.1.0"
+version = "0.1.1"
 description = "Rust bindings for the Wooting Analog and RGB SDKs!"
 readme = "README.md"
 documentation = "https://docs.rs/wooting-sdk"
