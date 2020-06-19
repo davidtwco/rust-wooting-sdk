@@ -1,14 +1,9 @@
 # rust-wooting-sdk
-[![Build Status][build_status_image]][build_status]
-
 This crate provides Rust bindings to the Analog and RGB SDKs provided by Wooting for the Wooting
 One and Wooting Two.
 
 See the [documentation](https://docs.rs/wooting-sdk) for more information on usage and
 prerequisites.
-
-[build_status_image]: https://dev.azure.com/davidtwco/rust-wooting-sdk/_apis/build/status/Rust%20Wooting%20SDK%20-%20Build%20and%20Test?branchName=master
-[build_status]: https://dev.azure.com/davidtwco/rust-wooting-sdk/_build/latest?definitionId=2&branchName=master
 
 ## Known issues
 This repository currently uses a fork of the Wooting SDKs that allow them to be built on Linux and
