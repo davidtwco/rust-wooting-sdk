@@ -932,7 +932,7 @@ pub mod rgb {
         ) -> bool {
             let (row, column) = key.into_matrix_row_and_column();
             unsafe {
-                wooting_rgb_sdk_sys::wooting_rgb_direct_set_key(row, column, red, blue, green)
+                wooting_rgb_sdk_sys::wooting_rgb_direct_set_key(row, column, red, green, blue)
             }
         }
 
@@ -1023,7 +1023,7 @@ pub mod rgb {
         ) -> bool {
             let (row, column) = key.into_matrix_row_and_column();
             unsafe {
-                wooting_rgb_sdk_sys::wooting_rgb_array_set_single(row, column, red, blue, green)
+                wooting_rgb_sdk_sys::wooting_rgb_array_set_single(row, column, red, green, blue)
             }
         }
 
